@@ -1,0 +1,72 @@
+#include <Wire.h>
+#include <Adafruit_AMG88xx.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+
+#define AMG88xx_ADDR 0x69 // Dirección I2C de la cámara térmica
+#define WIFI_SSID "nombre_de_la_red_wifi" // Nombre de la red WiFi
+#define WIFI_PASS "contraseña_wifi" // Contraseña de la red WiFi
+#define API_ENDPOINT "https://tuapi.com/enviar_datos" // Endpoint de la API
+
+Adafruit_AMG88xx amg;
+
+void setup() {
+  Serial.begin(9600);
+
+  // Inicialización de la cámara térmica
+  if (!amg.begin(AMG88xx_ADDR)) {
+    Serial.println("No se pudo inicializar la cámara térmica AMG8833");
+    while (1);
+  }
+
+  // Inicialización de la conexión WiFi
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Conectando a la red WiFi...");
+  }
+
+  Serial.println("Conexión WiFi establecida");
+}
+
+void loop() {
+  float pixels[AMG88xx_PIXEL_ARRAY_SIZE];
+  amg.readPixels(pixels);
+
+  // Interpolación de los valores para obtener una matriz de 16x16
+  float interpixels[256];
+  int pixel_index = 0;
+  for (int row = 0; row < 8; row++) {
+    for (int col = 0; col < 8; col++) {
+      int center_pixel_index = row * 8 + col;
+      interpixels[pixel_index++] = pixels[center_pixel_index];
+      if (col < 7) {
+        // Interpolar los valores horizontales
+        int right_pixel_index = center_pixel_index + 1;
+        float avg = (pixels[center_pixel_index] + pixels[right_pixel_index]) / 2.0;
+        interpixels[pixel_index++] = avg;
+      }
+    }
+    if (row < 7) {
+      // Interpolar los valores verticales
+      int bottom_pixel_index = (row + 1) * 8;
+      for (int col = 0; col < 8; col++) {
+        int top_pixel_index = row * 8 + col;
+        int center_pixel_index = top_pixel_index;
+        float avg = (pixels[top_pixel_index] + pixels[bottom_pixel_index]) / 2.0;
+        interpixels[pixel_index++] = avg;
+        if (col < 7) {
+          // Interpolar los valores diagonales
+          int bottom_right_pixel_index = bottom_pixel_index + 1;
+          int right_pixel_index = center_pixel_index + 1;
+          float avg = (pixels[center_pixel_index] + pixels[right_pixel_index] + pixels[bottom_pixel_index] + pixels[bottom_right_pixel_index]) / 4.0;
+          interpixels[pixel_index++] = avg;
+          bottom_pixel_index++;
+        }
+      }
+    }
+  }
+}
+
+ 

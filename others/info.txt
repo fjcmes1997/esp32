@@ -1,0 +1,3 @@
+https://randomnerdtutorials.com/esp32-servo-motor-web-server-arduino-ide/
+https://randomnerdtutorials.com/esp32-bluetooth-classic-arduino-ide/
+https://randomnerdtutorials.com/esp32-save-data-permanently-preferences/
